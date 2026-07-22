@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review — {{ session_id }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">OCR Form Fill</span>
+    <a href="/">Upload</a>
+    <a href="/history">History</a>
+    <a href="/search">Search</a>
+  </nav>
+  <div class="container">
+    <h1 style="margin: 2rem 0 0.5rem;">Review & Approve</h1>
+    <p style="color: var(--gray-700); margin-bottom: 2rem;">Session: {{ session_id }}</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>Extracted Fields</h2>
+        <div id="fieldsTable">
+          <p>Loading extracted fields...</p>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Form Mapping Preview</h2>
+        <div id="mappingsTable">
+          <p>Loading mappings...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex; gap:1rem; justify-content:space-between; align-items:center;">
+      <div>
+        <p style="font-size:0.875rem; color:var(--gray-700);">Review the extracted data and mappings above. Make corrections if needed.</p>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-outline" onclick="rejectSession()">Reject</button>
+        <button class="btn btn-success" onclick="approveSession()">Approve & Fill Form</button>
+      </div>
+    </div>
+    <div id="actionStatus"></div>
+  </div>
+  <script src="/static/js/app.js"></script>
+  <script>
+    const sessionId = '{{ session_id }}';
+
+    async function loadReview() {
+      try {
+        const resp = await fetch(`/api/v1/sessions/${sessionId}/review`);
+        const data = await resp.json();
+
+        // Fields table
+        const fieldsHtml = Object.entries(data.extracted_fields || {}).map(([key, val]) => `
+          <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--gray-200);">
+            <span><strong>${key}</strong></span>
+            <span>
+              <input type="text" value="${val.value || ''}" data-field="${key}" class="field-input" style="padding:0.25rem 0.5rem; border:1px solid var(--gray-200); border-radius:0.25rem; width:200px;">
+              <span class="badge ${val.confidence >= 0.9 ? 'badge-success' : val.confidence >= 0.7 ? 'badge-warning' : 'badge-danger'}" style="margin-left:0.5rem;">${(val.confidence * 100).toFixed(0)}%</span>
+            </span>
+          </div>
+        `).join('');
+        document.getElementById('fieldsTable').innerHTML = fieldsHtml || '<p>No fields extracted.</p>';
+
+        // Mappings table
+        const mappingsHtml = Object.entries(data.field_mappings || {}).map(([key, mapping]) => `
+          <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--gray-200);">
+            <span>${key}</span>
+            <span>-> ${mapping.form_field_id || 'unmapped'}
+              <span class="badge ${mapping.confidence >= 0.9 ? 'badge-success' : mapping.confidence >= 0.7 ? 'badge-warning' : 'badge-danger'}" style="margin-left:0.5rem;">${(mapping.confidence * 100).toFixed(0)}%</span>
+            </span>
+          </div>
+        `).join('');
+        document.getElementById('mappingsTable').innerHTML = mappingsHtml || '<p>No mappings available.</p>';
+
+      } catch (e) {
+        document.getElementById('fieldsTable').innerHTML = `<p class="badge badge-danger">Error: ${e.message}</p>`;
+      }
+    }
+
+    async function approveSession() {
+      const corrections = {};
+      document.querySelectorAll('.field-input').forEach(input => {
+        const original = input.defaultValue;
+        if (input.value !== original) corrections[input.dataset.field] = input.value;
+      });
+
+      const status = document.getElementById('actionStatus');
+      status.innerHTML = '<p class="badge badge-info">Submitting...</p>';
+
+      try {
+        const resp = await fetch(`/api/v1/sessions/${sessionId}/review`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ corrections, action: 'approve' }),
+        });
+        const data = await resp.json();
+        status.innerHTML = `<p class="badge badge-success">Approved! Status: ${data.status}</p>`;
+        setTimeout(() => { window.location.href = `/session/${sessionId}`; }, 1500);
+      } catch (e) {
+        status.innerHTML = `<p class="badge badge-danger">Error: ${e.message}</p>`;
+      }
+    }
+
+    async function rejectSession() {
+      const status = document.getElementById('actionStatus');
+      try {
+        const resp = await fetch(`/api/v1/sessions/${sessionId}/review`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ corrections: {}, action: 'reject' }),
+        });
+        const data = await resp.json();
+        status.innerHTML = `<p class="badge badge-warning">Rejected: ${data.status}</p>`;
+      } catch (e) {
+        status.innerHTML = `<p class="badge badge-danger">Error: ${e.message}</p>`;
+      }
+    }
+
+    loadReview();
+  </script>
+</body>
+</html>

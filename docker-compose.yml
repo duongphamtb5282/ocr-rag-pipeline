@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  ocr-form-fill:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./screenshots:/app/screenshots
+      - ./storage:/app/storage
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=sqlite+aiosqlite:///./storage/sessions.db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    profiles:
+      - with-redis
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./storage/qdrant:/qdrant/storage
+    profiles:
+      - with-vectordb

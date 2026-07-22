@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session {{ session_id }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">OCR Form Fill</span>
+    <a href="/">Upload</a>
+    <a href="/history">History</a>
+    <a href="/search">Search</a>
+    <a href="/admin">Admin</a>
+  </nav>
+  <div class="container">
+    <h1 style="margin: 2rem 0 0.5rem;">Session Progress</h1>
+    <p style="color: var(--gray-700); margin-bottom: 2rem;">ID: {{ session_id }}</p>
+
+    <div class="card">
+      <div class="stepper">
+        <div class="step" data-node="input_guardrails"><span class="step-icon">1</span> Validate</div>
+        <div class="step" data-node="analyze_document"><span class="step-icon">2</span> Analyze</div>
+        <div class="step" data-node="run_ocr"><span class="step-icon">3</span> OCR</div>
+        <div class="step" data-node="extract_fields"><span class="step-icon">4</span> Extract</div>
+        <div class="step" data-node="map_fields"><span class="step-icon">5</span> Map</div>
+        <div class="step" data-node="human_review"><span class="step-icon">6</span> Review</div>
+        <div class="step" data-node="fill_form"><span class="step-icon">7</span> Fill</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Session Status</h2>
+      <div id="sessionStatus">Loading...</div>
+    </div>
+
+    <div id="reviewLink" style="display:none;">
+      <a href="/review/{{ session_id }}" class="btn btn-primary">Go to Review</a>
+    </div>
+  </div>
+  <script src="/static/js/app.js"></script>
+  <script>
+    const sessionId = '{{ session_id }}';
+
+    async function pollStatus() {
+      try {
+        const resp = await fetch(`/api/v1/sessions/${sessionId}`);
+        const data = await resp.json();
+        document.getElementById('sessionStatus').innerHTML = `
+          <p><strong>Status:</strong> <span class="badge badge-info">${data.status}</span></p>
+          <p><strong>Document Type:</strong> ${data.doc_type || 'N/A'}</p>
+          <p><strong>OCR Strategy:</strong> ${data.ocr_strategy || 'N/A'}</p>
+          ${data.fill_status ? `<p><strong>Fill Status:</strong> ${data.fill_status}</p>` : ''}
+        `;
+        if (data.status === 'awaiting_review') {
+          document.getElementById('reviewLink').style.display = 'block';
+        } else if (data.status === 'completed') {
+          document.getElementById('sessionStatus').innerHTML += '<p class="badge badge-success">Session complete</p>';
+        } else if (data.status !== 'completed' && data.status !== 'failed') {
+          setTimeout(pollStatus, 2000);
+        }
+      } catch (e) {
+        document.getElementById('sessionStatus').innerHTML = `<p class="badge badge-danger">Error: ${e.message}</p>`;
+      }
+    }
+    pollStatus();
+  </script>
+</body>
+</html>

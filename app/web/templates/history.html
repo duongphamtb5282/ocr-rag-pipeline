@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session History</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">OCR Form Fill</span>
+    <a href="/">Upload</a>
+    <a href="/history">History</a>
+    <a href="/search">Search</a>
+    <a href="/admin">Admin</a>
+  </nav>
+  <div class="container">
+    <h1 style="margin: 2rem 0 1rem;">Session History</h1>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Session ID</th><th>Status</th><th>Type</th><th>Fill Status</th><th>Cost</th><th>Created</th><th>Action</th></tr>
+        </thead>
+        <tbody id="sessionsTable">
+          <tr><td colspan="7">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+    async function loadSessions() {
+      try {
+        const resp = await fetch('/api/v1/sessions');
+        const sessions = await resp.json();
+        const html = sessions.map(s => `
+          <tr>
+            <td><a href="/session/${s.session_id}">${s.session_id.slice(0,8)}...</a></td>
+            <td><span class="badge badge-info">${s.status}</span></td>
+            <td>${s.doc_type || '-'}</td>
+            <td>${s.fill_status || '-'}</td>
+            <td>$${(s.total_cost_usd || 0).toFixed(3)}</td>
+            <td>${s.created_at ? new Date(s.created_at).toLocaleDateString() : '-'}</td>
+            <td><a href="/review/${s.session_id}" class="btn btn-outline" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Review</a></td>
+          </tr>
+        `).join('');
+        document.getElementById('sessionsTable').innerHTML = html || '<tr><td colspan="7">No sessions found.</td></tr>';
+      } catch (e) {
+        document.getElementById('sessionsTable').innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`;
+      }
+    }
+    loadSessions();
+  </script>
+</body>
+</html>

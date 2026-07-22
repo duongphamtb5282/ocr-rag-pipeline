@@ -1,0 +1,73 @@
+# ━━━ Environment & Secrets ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# ━━━ Python ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+*.whl
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ━━━ Runtime Data ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+uploads/
+screenshots/
+storage/
+data/processed/
+data/raw/
+
+# ━━━ IDE & Editors ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ━━━ Docker ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.docker/
+
+# ━━━ Virtual Environments & System ━━━━━━━━━━━━━━━━━━━━━━━━━
+*.so
+*.dylib
+*.dll
+
+# ━━━ Testing & Coverage ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+htmlcov/
+.coverage
+coverage/
+.coverage.*
+coverage.xml
+test-results/
+
+# ━━━ Logs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+*.log
+logs/
+
+# ━━━ Qdrant Vector DB ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+storage/qdrant/
+
+# ━━━ ML Models ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+models/
+*.onnx
+*.pt
+*.pth
+*.bin

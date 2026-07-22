@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Gateway</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">OCR Form Fill</span>
+    <a href="/">Upload</a>
+    <a href="/history">History</a>
+    <a href="/search">Search</a>
+    <a href="/admin">Admin</a>
+  </nav>
+  <div class="container">
+    <h1 style="margin: 2rem 0 1rem;">Gateway Admin</h1>
+    <div class="grid-3">
+      <div class="card">
+        <h2>Provider Health</h2>
+        <div id="providerHealth">Loading...</div>
+      </div>
+      <div class="card">
+        <h2>Budget Status</h2>
+        <div id="budgetStatus">Loading...</div>
+      </div>
+      <div class="card">
+        <h2>Telemetry</h2>
+        <div id="telemetryData">Loading...</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    async function loadStatus() {
+      try {
+        const resp = await fetch('/api/v1/admin/gateway/status');
+        const data = await resp.json();
+
+        document.getElementById('providerHealth').innerHTML = Object.entries(data.provider_health || {}).map(([name, info]) => `
+          <div style="margin-bottom:0.5rem;">
+            <p><strong>${name}</strong> <span class="badge ${info.enabled ? 'badge-success' : 'badge-danger'}">${info.enabled ? 'enabled' : 'disabled'}</span></p>
+            <p style="font-size:0.75rem;">Circuit: ${info.circuit_breaker} | Models: ${(info.models || []).join(', ')}</p>
+          </div>
+        `).join('');
+
+        const b = data.budget?.daily || {};
+        document.getElementById('budgetStatus').innerHTML = `
+          <p><strong>Daily:</strong> $${b.spent?.toFixed(2)} / $${b.limit?.toFixed(2)} (${b.usage_pct}%)</p>
+          <p><strong>Remaining:</strong> $${b.remaining?.toFixed(2)}</p>
+        `;
+
+        const t = data.telemetry || {};
+        document.getElementById('telemetryData').innerHTML = `
+          <p><strong>Calls:</strong> ${t.total_calls}</p>
+          <p><strong>Avg Cost:</strong> $${t.avg_cost_per_call}</p>
+          <p><strong>P95 Latency:</strong> ${t.p95_latency_ms}ms</p>
+          <p><strong>Cache Savings:</strong> $${t.cache_savings?.toFixed(4)}</p>
+        `;
+      } catch (e) {
+        ['providerHealth', 'budgetStatus', 'telemetryData'].forEach(id => {
+          document.getElementById(id).innerHTML = `<p class="badge badge-danger">Error: ${e.message}</p>`;
+        });
+      }
+    }
+    loadStatus();
+  </script>
+</body>
+</html>

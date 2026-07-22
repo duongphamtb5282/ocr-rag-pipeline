@@ -1,0 +1,50 @@
+{
+  "_meta": {
+    "description": "Golden dataset for OCR Form Fill evaluation",
+    "version": "1.0",
+    "created": "2026-07-21",
+    "schema": {
+      "sessions": [
+        {
+          "name": "Test case name",
+          "description": "What this test validates",
+          "doc_type": "invoice | id_card | letter | form | other",
+          "file_format": "pdf | png | jpg",
+          "expected_fields": {
+            "field_name": {"value": "expected_value", "type": "text | date | currency | phone | email | number"}
+          },
+          "expected_quality": "high | medium | low",
+          "expected_ocr_strategy": "pdfplumber | tesseract | doctr | llm_vision",
+          "tags": ["smoke", "regression", "edge_case"]
+        }
+      ]
+    }
+  },
+  "sessions": [
+    {
+      "name": "simple_invoice",
+      "description": "Basic digital invoice with standard fields",
+      "doc_type": "invoice",
+      "file_format": "pdf",
+      "expected_fields": {
+        "invoice_number": {"value": "INV-001", "type": "text"},
+        "total_amount": {"value": 1249.99, "type": "currency"},
+        "date": {"value": "2024-01-15", "type": "date"},
+        "vendor_name": {"value": "Acme Corp", "type": "text"}
+      },
+      "expected_quality": "high",
+      "expected_ocr_strategy": "pdfplumber",
+      "tags": ["smoke", "regression"]
+    },
+    {
+      "name": "handwritten_form",
+      "description": "Scanned handwritten form — tests LLM Vision fallback",
+      "doc_type": "scanned_form",
+      "file_format": "png",
+      "expected_fields": {},
+      "expected_quality": "low",
+      "expected_ocr_strategy": "llm_vision",
+      "tags": ["edge_case", "regression"]
+    }
+  ]
+}
