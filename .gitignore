@@ -71,3 +71,6 @@ models/
 *.pt
 *.pth
 *.bin
+
+# ━━━ Documentation ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+docs/
