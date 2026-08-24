@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from security.output_filter import OutputFilter
+from guardrail.output_filter import OutputFilter
 
 
 @pytest.mark.asyncio

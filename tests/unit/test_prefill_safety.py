@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from security.prefill_safety import PrefillSafety
+from guardrail.prefill_safety import PrefillSafety
 
 
 @pytest.mark.asyncio

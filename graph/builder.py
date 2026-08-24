@@ -10,11 +10,11 @@ import logging
 from graph.state import OCRFormFillState
 
 # Guards and security — imported at module level for performance
-from security.input_guard import input_guard
-from security.output_filter import output_filter
-from security.pii_scanner import pii_scanner
-from security.prefill_safety import prefill_safety
-from security.audit_logger import audit_logger
+from guardrail.input_guard import input_guard
+from guardrail.output_filter import output_filter
+from guardrail.pii_scanner import pii_scanner
+from guardrail.prefill_safety import prefill_safety
+from guardrail.audit_logger import audit_logger
 
 # Agent nodes — decoupled from graph runtime
 from agents.document_analyzer import document_analyzer_node

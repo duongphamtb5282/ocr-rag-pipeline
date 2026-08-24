@@ -62,10 +62,23 @@ class ProviderRegistry:
         self._load_default_config()
 
     def _load_default_config(self):
-        """Load provider config from settings."""
+        """Load provider config from settings.
+
+        Single-active semantics (factory): exactly one provider is enabled by
+        default — the one selected by LLM_PROVIDER. The auto-switcher may enable
+        a fallback at runtime (outage / budget), still one at a time.
+        """
+        def _configured(name: str) -> bool:
+            """Credential check per provider (independent of active selection)."""
+            return {
+                "openai": bool(settings.OPENAI_API_KEY),
+                "anthropic": bool(settings.ANTHROPIC_API_KEY),
+                "azure": bool(settings.AZURE_OPENAI_API_KEY and settings.AZURE_OPENAI_ENDPOINT),
+            }.get(name, False)
+
         self._providers = {
             "openai": {
-                "enabled": bool(settings.OPENAI_API_KEY),
+                "configured": _configured("openai"),
                 "priority": 1,
                 "models": [
                     {"id": "gpt-4o",             "capabilities": ["vision", "extraction", "classification"], "cost_input": 0.005,  "cost_output": 0.015},
@@ -75,23 +88,44 @@ class ProviderRegistry:
                 ],
             },
             "anthropic": {
-                "enabled": bool(settings.ANTHROPIC_API_KEY),
+                "configured": _configured("anthropic"),
                 "priority": 2,
                 "models": [
                     {"id": "claude-sonnet-4-20250514", "capabilities": ["vision", "extraction", "classification"], "cost_input": 0.003, "cost_output": 0.015},
                     {"id": "claude-haiku-4-20251001",  "capabilities": ["classification", "mapping"],              "cost_input": 0.00025, "cost_output": 0.00125},
                 ],
             },
+            "azure": {
+                "configured": _configured("azure"),
+                "priority": 1,
+                "models": [
+                    {"id": "gpt-4o",             "capabilities": ["vision", "extraction", "classification"], "cost_input": 0.0025, "cost_output": 0.01},   # per 1K tok (directional)
+                    {"id": "gpt-4o-mini",         "capabilities": ["classification", "mapping"],             "cost_input": 0.00015, "cost_output": 0.0006},
+                    {"id": "text-embedding-3-large", "capabilities": ["embedding"],                           "cost_input": 0.00013, "cost_output": 0.0},
+                    {"id": "text-embedding-3-small", "capabilities": ["embedding"],                           "cost_input": 0.00002, "cost_output": 0.0},
+                ],
+            },
         }
+        # Factory semantics: only the LLM_PROVIDER-selected provider starts enabled.
+        # ("enabled" is the runtime state — the auto-switcher may flip it, one at a time.)
+        for name, cfg in self._providers.items():
+            cfg["enabled"] = cfg["configured"] and (name == settings.LLM_PROVIDER)
         self._circuit_breakers = {
             name: CircuitBreaker() for name in self._providers
         }
 
     def get_available_models(self, capability: str, budget_tier: str = "any") -> list[ModelInfo]:
-        """Get models matching a capability, sorted by budget tier."""
+        """Get models matching a capability, sorted by budget tier.
+
+        Embedding exception: vector search is a supporting service, not the chat
+        provider. If the single active provider has no embedding model (e.g.
+        anthropic), any *configured* embed-capable provider (openai/azure) is
+        used — mirrors the factory's get_embedding_adapter() fallback.
+        """
         candidates = []
         for prov_name, prov_cfg in self._providers.items():
-            if not prov_cfg["enabled"]:
+            enabled = prov_cfg["enabled"]
+            if not enabled and not (capability == "embedding" and prov_cfg["configured"]):
                 continue
             cb = self._circuit_breakers.get(prov_name)
             if cb and cb.is_open():

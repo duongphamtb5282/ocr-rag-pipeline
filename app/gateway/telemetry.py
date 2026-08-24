@@ -22,6 +22,14 @@ COST_PER_1K_TOKENS: dict[str, dict[str, dict[str, float]]] = {
         "claude-sonnet-4-20250514": {"input": 0.003,  "output": 0.015},
         "claude-haiku-4-20251001":  {"input": 0.00025, "output": 0.00125},
     },
+    # Azure OpenAI prices (2026, [ASSUMPTION] — directional; Azure bills by
+    # deployment, consult your resource's pricing page to update).
+    "azure": {
+        "gpt-4o":              {"input": 0.0025, "output": 0.01},
+        "gpt-4o-mini":         {"input": 0.00015, "output": 0.0006},
+        "text-embedding-3-large": {"input": 0.00013, "output": 0.0},
+        "text-embedding-3-small": {"input": 0.00002, "output": 0.0},
+    },
 }
 
 

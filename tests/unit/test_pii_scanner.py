@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from security.pii_scanner import PIIScanner
+from guardrail.pii_scanner import PIIScanner
 
 
 async def test_pii_detects_ssn():

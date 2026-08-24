@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from security.input_guard import InputGuard
+from guardrail.input_guard import InputGuard
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,7 @@ async def test_magic_byte_rejects_invalid(tmp_path):
 @pytest.mark.asyncio
 async def test_file_too_large_fails(tmp_path):
     f = tmp_path / "large.pdf"
-    f.write_bytes(b"%PDF" + b"x" * (InputGuardrails.MAX_FILE_SIZE_BYTES + 1))
+    f.write_bytes(b"%PDF" + b"x" * (InputGuard.MAX_FILE_SIZE_BYTES + 1))
     guardrail = InputGuard()
     result = await guardrail.validate(str(f))
     assert result["passed"] is False

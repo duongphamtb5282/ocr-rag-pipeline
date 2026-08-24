@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 class OpenAIAdapter(LLMProviderAdapter):
     """OpenAI Direct adapter. Extend with Azure OpenAI via api_type config."""
 
+    supports_embedding: bool = True
+
     def __init__(self):
         self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY) if settings.OPENAI_API_KEY else None
 

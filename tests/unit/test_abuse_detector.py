@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from security.abuse_detector import AbuseDetector
+from guardrail.abuse_detector import AbuseDetector
 
 
 @pytest.mark.asyncio

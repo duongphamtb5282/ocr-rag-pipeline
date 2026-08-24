@@ -11,7 +11,7 @@ from app.db.database import get_session_factory
 from app.models.session import SessionModel
 from graph.builder import get_graph
 from graph.state import create_initial_state
-from security.audit_logger import audit_logger
+from guardrail.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 import time
 
-from app.gateway.adapters.openai_adapter import OpenAIAdapter
-from app.gateway.adapters.anthropic_adapter import AnthropicAdapter
+from app.gateway.adapters.base import LLMProviderAdapter
+from app.gateway.adapters.factory import provider_factory
 from app.gateway.cache import gateway_cache
 from app.gateway.registry import registry
 from app.gateway.router import LLMRequest, router
@@ -14,14 +14,10 @@ from app.gateway.telemetry import cost_tracker
 
 logger = logging.getLogger(__name__)
 
-_adapters: dict[str, OpenAIAdapter | AnthropicAdapter] = {}
 
-
-def _get_adapter(provider: str):
-    if not _adapters:
-        _adapters["openai"] = OpenAIAdapter()
-        _adapters["anthropic"] = AnthropicAdapter()
-    return _adapters.get(provider)
+def _get_adapter(provider: str) -> LLMProviderAdapter | None:
+    """Resolve the adapter for a provider via the factory (one active at a time)."""
+    return provider_factory.get_adapter(provider)
 
 
 async def gateway_call(request: LLMRequest) -> str:
@@ -108,8 +104,12 @@ async def gateway_call(request: LLMRequest) -> str:
 
 
 async def gateway_embed(text: str, model: str = "text-embedding-3-large", dimensions: int = 1536) -> list[float]:
-    """Generate embedding via gateway."""
-    adapter = _get_adapter("openai")
+    """Generate embedding via the active provider when it supports embeddings.
+
+    Falls back to a configured embed-capable provider (openai/azure) when the
+    active chat provider has no embedding model (e.g. anthropic) — see factory.
+    """
+    adapter = provider_factory.get_embedding_adapter()
     if not adapter:
         raise RuntimeError("No embedding provider available")
     return await adapter.embed(text, model=model, dimensions=dimensions)

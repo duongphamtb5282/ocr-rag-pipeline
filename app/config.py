@@ -17,16 +17,37 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     DEBUG: bool = False
 
+    # ── LLM Provider selection (Factory — one active provider at a time) ──
+    # The LLMProviderFactory instantiates exactly one adapter for this provider.
+    # The auto-switcher may flip it at runtime (outage/budget) — still one at a time.
+    LLM_PROVIDER: Literal["openai", "anthropic", "azure", "bedrock", "google", "local"] = "openai"
+
     # ── LLM Providers ──
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
 
+    # ── Azure AI (Azure OpenAI) ──
+    AZURE_OPENAI_API_KEY: str = ""
+    AZURE_OPENAI_ENDPOINT: str = ""          # e.g. https://my-resource.openai.azure.com/
+    AZURE_OPENAI_API_VERSION: str = "2024-10-21"
+    # Azure calls the model by its *deployment name* — map logical model ids to deployments:
+    AZURE_OPENAI_DEPLOYMENT_CHAT: str = "gpt-4o"                    # chat + vision (GPT-4o family)
+    AZURE_OPENAI_DEPLOYMENT_CHAT_MINI: str = "gpt-4o-mini"          # cheap classification/mapping
+    AZURE_OPENAI_DEPLOYMENT_EMBEDDING_LARGE: str = "text-embedding-3-large"
+    AZURE_OPENAI_DEPLOYMENT_EMBEDDING_SMALL: str = "text-embedding-3-small"
+
+    # ── AWS Bedrock (per ADR-0002 — adapter pending build) ──
+    AWS_REGION: str = "us-east-1"
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_BEDROCK_ENABLED: bool = False
+
     # ── Gateway ──
     LLM_GATEWAY_STRATEGY: Literal["cost_optimized", "quality_optimized", "balanced", "manual"] = "balanced"
-    LLM_DAILY_BUDGET_USD: float = 100.0
-    LLM_MONTHLY_BUDGET_USD: float = 2500.0
-    LLM_MAX_PER_SESSION_USD: float = 0.50
+    LLM_DAILY_BUDGET_USD: float = 25.0       # ADR-0003: startup ceiling $500/mo → $25/day
+    LLM_MONTHLY_BUDGET_USD: float = 500.0    # ADR-0003: hard ceiling
+    LLM_MAX_PER_SESSION_USD: float = 0.15    # ADR-0003: reconciled per-session cap
 
     # ── Database ──
     DATABASE_URL: str = "sqlite+aiosqlite:///./storage/sessions.db"

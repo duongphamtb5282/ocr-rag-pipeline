@@ -17,10 +17,10 @@ from app.models.session import SessionModel
 from app.ocr.toolbox import ocr_toolbox
 from app.vector.dedup import duplicate_detector
 from graph.state import create_initial_state
-from security.abuse_detector import abuse_detector
-from security.audit_logger import audit_logger
-from security.input_guard import input_guard as input_guardrails
-from security.data_retention import data_retention
+from guardrail.abuse_detector import abuse_detector
+from guardrail.audit_logger import audit_logger
+from guardrail.input_guard import input_guard as input_guardrails
+from guardrail.data_retention import data_retention
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
