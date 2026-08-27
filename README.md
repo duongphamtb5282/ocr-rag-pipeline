@@ -248,13 +248,16 @@ Token-count chunking is **never** the primary strategy. Boundaries come from the
 - **Size window** — a unit over 400 tokens sub-splits **on sentence boundaries** into ≤ 400-token windows, so no fact straddles a cut.
 - **Overlap** — 10% overlap (40 tokens) between windows catches facts that fall across a boundary.
 - **Parent-child pointers** — every child carries its parent unit's text in the payload; a short child that would answer a question gets its full parent attached at answer time, so the LLM sees the complete role block, not a fragment.
+- **Section-context stamps** — every chunk's text carries `[Section: Work History — Acme Corp, Senior Engineer]` at index time (embedded **with** the chunk), so a query embedding can never see a role block without knowing it is a role block — "3 years at Acme" retrieves the right section even when the question only names the company. One version bump invalidates everything indexed before it.
 - **Write-time dedup** — before embedding, the indexer probes `(candidate, text_hash)`; re-uploading the same resume skips **every** chunk embed. Change one line → only the changed text embeds.
+- **Near-duplicate removal (MinHash)** — a self-contained MinHash signature (96 hash functions over word 5-shingles, zero new dependencies) skips chunks ≥ 90% similar to an already-indexed chunk of the **same** candidate — a lightly-edited duplicate upload that the exact hash misses. Scoped per-candidate by design: two candidates may legitimately share boilerplate.
 - **Versioned payloads** — schema bumps invalidate stale caches and rebuilds are incremental, not full re-embeds.
 
 ### Embeddings & the vector store
 
 - **Embeddings** — bge-m3 (1024-dim, multilingual) locally, or the cloud provider's embed model; the gateway falls back automatically when the active chat provider has no embedding endpoint (e.g. Anthropic → OpenAI/Azure).
 - **Vector store** — Qdrant OSS by default (persistent volume, `:6333`); pgvector and an in-memory backend are drop-in switches via one environment variable, behind a common interface.
+- **Dual-arm points (hybrid retrieval)** — every Qdrant point carries BOTH the dense embedding and a **sparse term vector** `{term: frequency}` written at index time (Qdrant-native named vectors — no second store, no sync problem). Queries build an IDF-weighted keyword arm from an in-process document-frequency registry; both arms run under the **same policy payload filter** and fuse by **Reciprocal Rank Fusion** (rank-based, scale-free — the two arms never need calibrated score scales). Name and acronym lookups ("Duong Pham", "FastAPI", "Acme") stop depending on embedding luck. Memory/pgvector backends degrade to dense-only with a logged warning — one environment variable restores parity.
 - **Payload filtering** — hard policy rules (employer filters, skills/location/role constraints) are applied as vector-store payload filters *before* semantic search, so candidates excluded by policy never enter the ranking.
 
 ---
@@ -263,8 +266,12 @@ Token-count chunking is **never** the primary strategy. Boundaries come from the
 
 ### Two-stage retrieval: recall first, precision second
 
-1. **Retrieve** top-6 candidate chunks with hard policy filters applied in-store.
+1. **Retrieve** top-6 candidate chunks with hard policy filters applied in-store. On Qdrant this is the **hybrid arm**: dense cosine (with the calibrated floor) + sparse keyword hits, fused by Reciprocal Rank Fusion under the same filter — recall from both semantics, precision from the filter.
 2. **Rerank** to top-3 — LLM-as-reranker on the cloud tier, cross-encoder locally, or off — with the employer's **soft boosts** (preferred skills, seniority) applied during ranking. Context shrinks by half, precision rises, and the Fortran-style hallucination failure mode is structurally removed: the answer LLM only ever sees what the reranker says is relevant.
+
+### Multi-hop questions, one grounded answer
+
+"Which of the Python candidates also worked at Acme?" needs **two** lookups — one for Python, one for Acme — and a single retrieval would only catch one side. On the cloud tier the question is classified (single vs multi) in one tiny call, decomposed into ≤ 2 standalone sub-questions, and each sub-question is retrieved **under the same policy filter**; evidence merges (deduped by candidate + chunk) before one grounded answer. The classification degrades safe: any failure falls back to single-hop, so no question is ever missed by misclassification. Local tier stays single-hop by decision (latency posture).
 
 ### Grounded answers with a hard token budget
 
@@ -275,9 +282,13 @@ The prompt's `Candidate data` section is assembled under **`CHAT_CONTEXT_MAX_TOK
 A poor or ambiguous question is not a dead end. The platform watches two signals:
 
 - **Retrieval floor miss** — semantic score below 0.35 → no data.
-- **Faithfulness judge fails** — the judge (same active provider, JSON format) says the draft isn't supported by the retrieved text.
+- **Verification fails** — the judge (same active provider, JSON format) says the draft isn't supported by the retrieved text.
 
-On either signal, if the question has **domain anchors** (skills, locations, roles), the system rewrites the query once (one small LLM call), re-searches, re-answers, re-judges — and returns the rewritten query with the answer. If there are no anchors (pure pronouns), it replies with a **clarification** ("add a skill, a location…"). Bounded: at most one rewrite, inside the request timeout; the local tier clarifies only. Every shipped answer is **judge-verified**; if verification fails after one corrective regeneration, the platform says so instead of guessing.
+On either signal, if the question has **domain anchors** (skills, locations, roles), the system rewrites the query once (one small LLM call), re-searches, re-answers, re-judges — and returns the rewritten query with the answer. If there are no anchors (pure pronouns), it replies with a **clarification** ("add a skill, a location…"). Bounded: at most one rewrite, inside the request timeout; the local tier clarifies only.
+
+### Claim-level verification and calibrated abstention
+
+On the cloud tier, answer verification goes one level deeper than the binary pass/fail: the draft is **split into atomic claims** (one JSON call), each claim is **verified against its cited chunk with a confidence score** (one JSON call), and the system **abstains** — refuses instead of guessing — when any claim fails support or its confidence drops below the calibrated threshold τ* (0.7 default). The threshold is **evidence-tuned, not guessed**: `tools/calibrate_judge.py` measures AUROC (pure-python rank statistic, no new dependencies) on your held-out claim samples and writes the optimal τ* back to the environment. Unsupported-claim lists drive the corrective-regeneration prompt, so the correction loop and the reflection loop keep working unchanged. Any verifier failure degrades to pass-with-warning (the same posture as the binary judge) — verification never becomes a new failure point. The local tier keeps the binary judge by decision (the 3B claim model is the same drift-prone model the judge measured unreliable).
 
 ---
 
@@ -305,9 +316,11 @@ Huge corpora attack two budgets at once — **retriever performance** (vector sc
 | L2 | **Chunker v2** — short children embed cheaper, retrieve sharper; parent carried only when it adds value | Live |
 | L3 | **Write-time dedup** — re-upload / re-index of unchanged text costs ~0 embeddings | Live |
 | L4 | **Embedding cache** (content-addressed) — re-index runs near $0 | Live |
-| L5 | **Payload index on the dedup hash** — the hot existence probe becomes an indexed lookup | Scale gate 1 |
-| L6 | **Quantization + compaction** — smaller vectors, cheaper scan | Scale gate 2 |
-| L7 | **Partitioning / sharding** — multi-node Qdrant or sharded pgvector once a single node's budget is crossed | Scale gate 3 |
+| L5 | **Hybrid retrieval** (sparse arm + RRF) — exact-name and acronym lookups stop depending on embedding luck; the keyword arm is Qdrant-native, so there is no second store to keep consistent | Live |
+| L6 | **Near-duplicate removal (MinHash)** — at 10k documents the exact-hash dedup covers re-uploads; the MinHash gate catches lightly-edited duplicates that would otherwise re-embed and re-index at full cost | Live |
+| L7 | **Payload index on the dedup hash** — the hot existence probe becomes an indexed lookup | Scale gate 1 |
+| L8 | **Quantization + compaction** — smaller vectors, cheaper scan | Scale gate 2 |
+| L9 | **Partitioning / sharding** — multi-node Qdrant or sharded pgvector once a single node's budget is crossed | Scale gate 3 |
 
 Each scale gate is armed by **metrics, not guesswork** (retriever p95, recall on the golden set, store size), and each is reversible. Today a single node comfortably holds 10k+ documents with ~7 chunks each (~70k points).
 
