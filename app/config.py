@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # ── LLM Provider selection (Factory — one active provider at a time) ──
     # The LLMProviderFactory instantiates exactly one adapter for this provider.
     # The auto-switcher may flip it at runtime (outage/budget) — still one at a time.
-    LLM_PROVIDER: Literal["openai", "anthropic", "azure", "bedrock", "google", "local"] = "openai"
+    LLM_PROVIDER: Literal["openai", "anthropic", "azure", "bedrock", "deepseek", "google", "local"] = "openai"
 
     # ── LLM Providers ──
     OPENAI_API_KEY: str = ""
@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     AZURE_OPENAI_DEPLOYMENT_CHAT_MINI: str = "gpt-4o-mini"          # cheap classification/mapping
     AZURE_OPENAI_DEPLOYMENT_EMBEDDING_LARGE: str = "text-embedding-3-large"
     AZURE_OPENAI_DEPLOYMENT_EMBEDDING_SMALL: str = "text-embedding-3-small"
+
+    # ── DeepSeek (per ADR-0006 — OpenAI-compatible endpoint) ──
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_VISION_ENABLED: bool = False      # experimental vision-exp off by default (TO-7)
+    DEEPSEEK_PII_POLICY: Literal["allow", "block-sensitive"] = "block-sensitive"  # TO-9 gate
 
     # ── AWS Bedrock (per ADR-0002 — adapter pending build) ──
     AWS_REGION: str = "us-east-1"

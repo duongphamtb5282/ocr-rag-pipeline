@@ -74,6 +74,7 @@ class ProviderRegistry:
                 "openai": bool(settings.OPENAI_API_KEY),
                 "anthropic": bool(settings.ANTHROPIC_API_KEY),
                 "azure": bool(settings.AZURE_OPENAI_API_KEY and settings.AZURE_OPENAI_ENDPOINT),
+                "deepseek": bool(settings.DEEPSEEK_API_KEY),
             }.get(name, False)
 
         self._providers = {
@@ -103,6 +104,16 @@ class ProviderRegistry:
                     {"id": "gpt-4o-mini",         "capabilities": ["classification", "mapping"],             "cost_input": 0.00015, "cost_output": 0.0006},
                     {"id": "text-embedding-3-large", "capabilities": ["embedding"],                           "cost_input": 0.00013, "cost_output": 0.0},
                     {"id": "text-embedding-3-small", "capabilities": ["embedding"],                           "cost_input": 0.00002, "cost_output": 0.0},
+                ],
+            },
+            # DeepSeek V4 (ADR-0006) — list prices 2026-08, per 1K tokens.
+            "deepseek": {
+                "configured": _configured("deepseek"),
+                "priority": 3,   # cheap tier — behind direct providers; auto-switcher downgrade floor
+                "models": [
+                    {"id": "deepseek-v4-flash",             "capabilities": ["classification", "mapping", "extraction"], "cost_input": 0.00014, "cost_output": 0.00028},
+                    {"id": "deepseek-v4-pro",               "capabilities": ["extraction", "classification"],             "cost_input": 0.00174, "cost_output": 0.00348},
+                    {"id": "deepseek-v4-flash-vision-exp",  "capabilities": ["vision", "classification"],                 "cost_input": 0.00014, "cost_output": 0.00028},
                 ],
             },
         }

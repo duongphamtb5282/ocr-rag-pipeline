@@ -19,6 +19,7 @@ from app.config import settings
 from app.gateway.adapters.anthropic_adapter import AnthropicAdapter
 from app.gateway.adapters.azure_adapter import AzureOpenAIAdapter
 from app.gateway.adapters.base import LLMProviderAdapter
+from app.gateway.adapters.deepseek_adapter import DeepSeekAdapter
 from app.gateway.adapters.openai_adapter import OpenAIAdapter
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ _ADAPTER_CLASSES: dict[str, type[LLMProviderAdapter]] = {
     "openai": OpenAIAdapter,
     "anthropic": AnthropicAdapter,
     "azure": AzureOpenAIAdapter,
+    "deepseek": DeepSeekAdapter,   # ADR-0006 — OpenAI-compatible endpoint
     # "bedrock": BedrockAdapter,   # ADR-0002 — pending build (needs boto3)
     # "google": GoogleVertexAdapter,  # pending
     # "local": LocalAdapter,          # pending (Ollama / vLLM)

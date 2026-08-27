@@ -30,6 +30,12 @@ COST_PER_1K_TOKENS: dict[str, dict[str, dict[str, float]]] = {
         "text-embedding-3-large": {"input": 0.00013, "output": 0.0},
         "text-embedding-3-small": {"input": 0.00002, "output": 0.0},
     },
+    # DeepSeek V4 list prices (2026-08, per 1K tokens) — ADR-0006.
+    "deepseek": {
+        "deepseek-v4-flash":            {"input": 0.00014, "output": 0.00028},
+        "deepseek-v4-pro":              {"input": 0.00174, "output": 0.00348},
+        "deepseek-v4-flash-vision-exp": {"input": 0.00014, "output": 0.00028},
+    },
 }
 
 
