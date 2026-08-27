@@ -90,7 +90,7 @@ Sessions are cancellable, resumable, and searchable (`/api/v1/search` performs s
 Every LLM call goes through `app/gateway/`:
 
 - **Provider factory (`app/gateway/adapters/factory.py`)** — exactly **one** provider is active at a time, selected by `LLM_PROVIDER` in `.env`. The factory instantiates a single adapter; switching providers is a one-line env change.
-- **Supported providers:** `openai` (default) · `anthropic` · `azure` (Azure AI / Azure OpenAI — calls models by *deployment name*) · `bedrock` (reserved, adapter pending) · `google`/`local` (reserved).
+- **Supported providers:** `openai` (default) · `anthropic` · `azure` (Azure AI / Azure OpenAI — calls models by *deployment name*) · `bedrock` (reserved, adapter pending) · `deepseek` (V4-Flash/V4-Pro, ADR-0006 — embeddings fall back to OpenAI/Azure) · `google`/`local` (reserved).
 - **Embeddings fallback** — if the active chat provider has no embedding model (e.g. anthropic), embeddings automatically fall back to a configured embed-capable provider (openai/azure), so vector search keeps working regardless.
 - **Cost-aware router** — routes each request by capability (vision / extraction / classification / mapping / embedding) and budget tier.
 - **Budget controller** — hard ceilings: daily / monthly / per-session / per-route; auto-downgrades to cheaper models at 80%, hard-stops at the ceiling.
